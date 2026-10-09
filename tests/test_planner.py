@@ -115,7 +115,9 @@ def test_build_slots_multiple_days():
         language="en",
     )
     candidates = build_candidate_slots({"Eve": parse}, ref)
-    assert len(candidates) == 2
+    # Each day gets at least one candidate window
+    days = {c.date for c in candidates}
+    assert len(days) == 2
 
 
 # ── score_slots ───────────────────────────────────────────────────────────────

@@ -78,27 +78,46 @@ def build_candidate_slots(
     reference_date: date,
 ) -> list[CandidateSlot]:
     """
-    Build all candidate (date, start, end) windows mentioned by any player.
-    Returns one CandidateSlot per unique (date, start-hour) pair.
-    """
-    # Collect all windows
-    window_map: dict[tuple[date, time, time], CandidateSlot] = {}
+    Build candidate slots by collecting every (date, start-hour) window
+    any player mentioned, then counting how many players *overlap* with
+    each window.
 
+    Two intervals overlap when they intersect: a player available
+    09:00–12:00 and one available 10:00–12:00 both count for the
+    10:00-start window.
+    """
+    # Step 1: collect all individual player intervals per date
+    player_intervals: dict[date, list[tuple[str, time, time]]] = {}
     for player, parse in replies.items():
         if not parse.can_play:
             continue
         for slot in parse.slots:
             for d in _slot_to_dates(slot, reference_date):
                 start, end = _slot_time(slot)
-                key = (d, start, end)
-                if key not in window_map:
-                    window_map[key] = CandidateSlot(date=d, start=start, end=end)
-                cs = window_map[key]
-                cs.player_count += 1
-                cs.players.append(player)
+                player_intervals.setdefault(d, []).append((player, start, end))
 
-    # If no slots were provided, still include players who said "any"
-    # (handled via separate logic in planner)
+    # Step 2: for each mentioned start-hour on each date, build a candidate
+    # window and count every player whose interval overlaps it.
+    window_map: dict[tuple[date, time, time], CandidateSlot] = {}
+
+    for d, intervals in player_intervals.items():
+        start_hours: set[time] = {time(s.hour, s.minute) for _, s, _ in intervals}
+
+        for start in start_hours:
+            end_dt = datetime.combine(d, start) + MATCH_DURATION
+            end = end_dt.time()
+            key = (d, start, end)
+            if key not in window_map:
+                window_map[key] = CandidateSlot(date=d, start=start, end=end)
+            cs = window_map[key]
+
+            seen: set[str] = set(cs.players)
+            for player, p_start, p_end in intervals:
+                if player not in seen and p_start < end and p_end > start:
+                    cs.player_count += 1
+                    cs.players.append(player)
+                    seen.add(player)
+
     return list(window_map.values())
 
 
