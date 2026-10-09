@@ -12,7 +12,7 @@ import logging
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator, field_validator
 
 from touchgrass import config
 
@@ -30,8 +30,8 @@ class TimeSlot(BaseModel):
     weekday: str | None = Field(
         default=None,
         description=(
-            "Lowercase English weekday name, e.g. 'saturday'. "
-            "Set if the player named a day of the week."
+            "Lowercase English weekday name ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'). "
+            "You MUST set this if a day of the week is mentioned."
         ),
     )
     date: str | None = Field(
@@ -40,25 +40,50 @@ class TimeSlot(BaseModel):
     )
     start: str | None = Field(
         default=None,
-        description="HH:MM 24-h start time, or null if not specified.",
+        description="HH:MM 24-h start time (e.g. '09:00', '18:00'), or null.",
     )
     end: str | None = Field(
         default=None,
-        description="HH:MM 24-h end time, or null if not specified.",
+        description="HH:MM 24-h end time (e.g. '12:00', '21:00'), or null.",
     )
+
+    @field_validator("weekday", mode="before")
+    @classmethod
+    def normalize_weekday(cls, v: Any) -> str | None:
+        if isinstance(v, str):
+            v_low = v.strip().lower()
+            day_map = {
+                "mon": "monday", "понед": "monday",
+                "tue": "tuesday", "вівт": "tuesday", "втор": "tuesday",
+                "wed": "wednesday", "серед": "wednesday",
+                "thu": "thursday", "четв": "thursday",
+                "fri": "friday", "п'ят": "friday", "пят": "friday",
+                "sat": "saturday", "суб": "saturday",
+                "sun": "sunday", "нед": "sunday", "воскр": "sunday",
+            }
+            for k, day in day_map.items():
+                if k in v_low:
+                    return day
+            if v_low in WEEKDAYS:
+                return v_low
+            raise ValueError(f"Unknown weekday: {v!r}")
+        return v
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def clean_time(cls, v: Any) -> str | None:
+        if isinstance(v, str):
+            v_str = v.strip()
+            # If not containing digits, it's not a valid HH:MM time
+            if not any(c.isdigit() for c in v_str):
+                return None
+            return v_str
+        return v
 
     @model_validator(mode="after")
     def needs_day_or_date(self) -> "TimeSlot":
         if self.weekday is None and self.date is None:
             raise ValueError("A slot must have at least a weekday or a date")
-        return self
-
-    @model_validator(mode="after")
-    def weekday_lowercase(self) -> "TimeSlot":
-        if self.weekday:
-            self.weekday = self.weekday.lower()
-            if self.weekday not in WEEKDAYS:
-                raise ValueError(f"Unknown weekday: {self.weekday!r}")
         return self
 
 
@@ -78,8 +103,41 @@ class AvailabilityParse(BaseModel):
         ),
     )
     language: str = Field(
-        description="Detected language: 'uk' (Ukrainian), 'ru' (Russian), or 'en' (English).",
+        description="Detected language code: 'uk', 'ru', or 'en'.",
     )
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def normalize_lang(cls, v: Any) -> str:
+        if isinstance(v, str):
+            v_low = v.strip().lower()
+            if v_low.startswith("uk"):
+                return "uk"
+            if v_low.startswith("ru"):
+                return "ru"
+            if v_low.startswith("en"):
+                return "en"
+        return "en"
+
+    @model_validator(mode="before")
+    @classmethod
+    def filter_slots(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("can_play", True):
+                data["slots"] = []
+            elif "slots" in data and isinstance(data["slots"], list):
+                clean = []
+                for s in data["slots"]:
+                    if isinstance(s, dict):
+                        if s.get("weekday") or s.get("date"):
+                            clean.append(s)
+                    elif isinstance(s, TimeSlot):
+                        if s.weekday or s.date:
+                            clean.append(s)
+                    else:
+                        clean.append(s)
+                data["slots"] = clean
+        return data
 
 
 # JSON schema fed to Ollama for structured output
@@ -87,14 +145,29 @@ _SCHEMA: dict[str, Any] = AvailabilityParse.model_json_schema()
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 _SYSTEM = (
-    "You are a football-match availability parser. "
-    "Players write in Ukrainian, Russian, or English – sometimes mixing languages or using slang. "
-    "Extract structured availability from their message and respond ONLY with valid JSON "
-    "matching the provided schema. Do not add commentary. "
-    "If a player says they CANNOT play, set can_play=false and leave slots empty. "
-    "Relative words: 'завтра'/'tomorrow'='next day', 'після роботи'='after work'≈18:00-20:00, "
-    "'вранці'/'morning'=08:00-12:00, 'вдень'/'afternoon'=12:00-17:00, "
-    "'ввечері'/'evening'=18:00-21:00."
+    "You are a football-match availability parser.\n"
+    "Respond ONLY with valid JSON matching the schema.\n\n"
+    "Language code: 'uk' for Ukrainian, 'ru' for Russian, 'en' for English.\n\n"
+    "Days of week mapping:\n"
+    "- понеділок / понедельник -> 'monday'\n"
+    "- вівторок / вторник -> 'tuesday'\n"
+    "- середа / среда -> 'wednesday'\n"
+    "- четвер / четверг -> 'thursday'\n"
+    "- п'ятниця / пятница -> 'friday'\n"
+    "- субота / суббота -> 'saturday'\n"
+    "- неділя / воскресенье -> 'sunday'\n\n"
+    "Rules:\n"
+    "1. If player CANNOT play (e.g. 'не можу', 'зайнятий', 'not this week', 'я пас'): set can_play=false, slots=[].\n"
+    "2. If player cannot play on one day but CAN on another (e.g. 'суботу не можу, тільки неділя'): set can_play=true, include ONLY the day they CAN play (e.g. weekday='sunday').\n"
+    "3. Every slot in 'slots' MUST have 'weekday' specified as lowercase English (e.g. 'saturday', 'sunday'). Never leave weekday null if a day was mentioned.\n"
+    "4. 'start' and 'end' must be 'HH:MM' 24-hour time strings (e.g. '18:00', '09:00') or null. Never put text like 'next day' or 'morning' into start/end.\n"
+    "5. Approximate times:\n"
+    "   - 'вранці' / 'morning' -> start='09:00', end='12:00'\n"
+    "   - 'вдень' / 'afternoon' -> start='12:00', end='17:00'\n"
+    "   - 'ввечері' / 'після роботи' / 'evening' -> start='18:00', end='21:00'\n"
+    "   - 'після 18' -> start='18:00', end='21:00'\n"
+    "   - 'any time' / 'будь-який час' on a day -> start='10:00', end='20:00'\n"
+    "6. Conditions: 'якщо не дощ'/'no rain' -> 'no_rain'; 'без вітру'/'no wind' -> 'no_wind'."
 )
 
 # ── Ollama client ─────────────────────────────────────────────────────────────
