@@ -1,5 +1,9 @@
 # TouchGrass FC 🌱⚽
 
+<p align="center">
+  <img src="assets/logo.png" alt="TouchGrass FC Logo" width="220" />
+</p>
+
 > A Telegram group bot that turns messy "when can you play?" chatter into ONE poll for a real-life pickup football match — then goes quiet so people actually go outside.
 
 **DEV Hacktoberfest Open-Source AI Challenge · Week 1 · Theme: Touch Grass**

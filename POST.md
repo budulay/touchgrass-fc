@@ -1,5 +1,9 @@
 # TouchGrass FC: I Built a Telegram Bot That Gets a Football Group Off Their Phones and Onto a Pitch
 
+<p align="center">
+  <img src="assets/logo.png" alt="TouchGrass FC Logo" width="220" />
+</p>
+
 ## What I Built
 
 TouchGrass FC is a Telegram group bot that solves a very specific problem: every pickup football group has the same 20-message thread that goes nowhere. "Can you Saturday?" "Maybe." "What time?" "After work." "Which Saturday?" Nobody commits. The match never happens.
