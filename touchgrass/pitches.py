@@ -82,17 +82,22 @@ async def find_nearest_pitch(
 ) -> Pitch | None:
     """Return the nearest football pitch within *radius_m* metres, or None."""
     query = _OVERPASS_QUERY.format(radius=radius_m, lat=lat, lon=lon)
+    headers = {"User-Agent": config.NOMINATIM_UA}
 
     async def _req(c: httpx.AsyncClient) -> list[dict]:
-        resp = await c.post(overpass_url, data={"data": query}, timeout=20.0)
+        resp = await c.post(overpass_url, data={"data": query}, headers=headers, timeout=20.0)
         resp.raise_for_status()
         return resp.json()["elements"]
 
-    if client:
-        elements = await _req(client)
-    else:
-        async with httpx.AsyncClient() as c:
-            elements = await _req(c)
+    try:
+        if client:
+            elements = await _req(client)
+        else:
+            async with httpx.AsyncClient() as c:
+                elements = await _req(c)
+    except Exception as exc:
+        logger.warning("Overpass pitch lookup failed: %s", exc)
+        return None
 
     if not elements:
         return None

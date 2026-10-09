@@ -92,21 +92,31 @@ async def _run_planning(chat_id: int, bot: Bot) -> None:
         return
 
     # Find pitch
-    pitch = await pitches.find_nearest_pitch(lat, lon)
+    try:
+        await bot.send_chat_action(chat_id, "find_location")
+        pitch = await pitches.find_nearest_pitch(lat, lon)
+    except Exception as exc:
+        logger.warning("Pitch search failed: %s", exc)
+        pitch = None
+
     if pitch is None:
-        pitch_name = "nearest local pitch"
+        pitch_name = "місцеве футбольне поле"
         pitch_lat, pitch_lon = lat, lon
     else:
         pitch_name = pitch.name
         pitch_lat, pitch_lon = pitch.lat, pitch.lon
 
     # Ask Gemma for the invite text
+    try:
+        await bot.send_chat_action(chat_id, "typing")
+    except Exception:
+        pass
     dominant_lang = _dominant_language(reply_rows)
     slot_desc = f"{best.date.strftime('%A, %d %B')} {best.start.strftime('%H:%M')}–{best.end.strftime('%H:%M')}"
     try:
         invite = await nlu.write_invite(slot_desc, pitch_name, dominant_lang)
     except Exception:
-        invite = f"Football at {pitch_name} on {slot_desc}. Vote below!"
+        invite = f"⚽ Збираємось на футбол ({pitch_name}) на {slot_desc}! Голосуйте в опитуванні нижче."
 
     # Post invite + poll
     await bot.send_message(chat_id, invite)
