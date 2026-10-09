@@ -136,19 +136,11 @@ async def run_eval(models: list[str] | None = None) -> None:
     print(f"Loaded {len(fixtures)} fixtures.")
 
     if models is None:
-        # Try a few sizes; skip if not available
         candidates = [
-            config.OLLAMA_MODEL,
             "gemma3:1b",
             "gemma3:4b",
         ]
-        # Deduplicate while preserving order
-        seen: set[str] = set()
-        models = []
-        for m in candidates:
-            if m not in seen:
-                models.append(m)
-                seen.add(m)
+        models = candidates
 
     results = []
     for model in models:

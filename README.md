@@ -60,11 +60,10 @@ flowchart LR
 
 | Model | Overall | can_play | language | slots | conditions | avg_lat | p95_lat | errors |
 |---|---|---|---|---|---|---|---|---|
-| `gemma3:1b` | 73% | 93% | 88% | 68% | 55% | 1.2s | 2.1s | 0 |
-| `gemma3:4b` | 88% | 98% | 95% | 85% | 72% | 2.4s | 4.0s | 0 |
-| `gemma3:12b` | 93% | 100% | 98% | 90% | 80% | 5.1s | 8.3s | 0 |
+| `gemma3:1b` | 18% | 45% | 48% | 55% | 80% | 6.6s | 16.1s | 1 |
+| `gemma3:4b` | 28% | 88% | 50% | 72% | 88% | 23.2s | 36.1s | 1 |
 
-_Numbers above are pre-run on an RTX 3060 12 GB. Your hardware will differ._
+_Measured locally with 40 multilingual fixtures on AMD Renoir APU/CPU via Ollama._
 
 ---
 
