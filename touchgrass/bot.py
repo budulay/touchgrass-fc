@@ -268,7 +268,16 @@ async def on_reply(msg: Message) -> None:
     if not text.strip():
         return
 
-    await _handle_availability(msg, round_row["id"], text)
+@dp.message(F.chat.type == "private", ~F.text.startswith("/"))
+async def on_private_message(msg: Message) -> None:
+    """In private chat, treat non-command text as availability if a round is open."""
+    assert msg.chat
+    round_row = await db.get_open_round(msg.chat.id)
+    if not round_row:
+        return
+    text = (msg.text or "").strip()
+    if text:
+        await _handle_availability(msg, round_row["id"], text)
 
 
 async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
@@ -276,6 +285,11 @@ async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
 
     player_name = _player_name(msg)
     player_id = msg.from_user.id
+
+    try:
+        await msg.bot.send_chat_action(msg.chat.id, "typing")
+    except Exception:
+        pass
 
     try:
         parse = await nlu.parse_availability(text)
@@ -295,10 +309,14 @@ async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
             f"{s.weekday or s.date} {s.start or ''}–{s.end or ''}".strip()
             for s in parse.slots
         ]
-        slots_str = ", ".join(slot_texts) if slot_texts else "some time"
-        await msg.react([{"type": "emoji", "emoji": "⚽"}])  # type: ignore[arg-type]
+        slots_str = ", ".join(slot_texts) if slot_texts else "будь-який час"
+        try:
+            await msg.react([{"type": "emoji", "emoji": "⚽"}])  # type: ignore[arg-type]
+        except Exception:
+            pass
+        await msg.reply(f"⚽ Записав доступність: {slots_str}. Використовуй /plan коли всі відпишуть!")
     else:
-        await msg.reply("Got it — marked you as unavailable for this round.")
+        await msg.reply("Зрозумів — позначив як недоступного на цей раунд.")
 
     # Auto-trigger planning?
     count = await db.count_replies(round_id)

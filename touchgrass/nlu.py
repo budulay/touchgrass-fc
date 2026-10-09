@@ -178,7 +178,7 @@ async def _call_ollama(
     model: str,
     base_url: str,
     *,
-    timeout: float = 60.0,
+    timeout: float = 180.0,
 ) -> dict[str, Any]:
     """Raw call to Ollama /api/chat with structured output."""
     payload = {
