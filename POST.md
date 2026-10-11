@@ -1,7 +1,9 @@
 # TouchGrass FC: I Built a Telegram Bot That Gets a Football Group Off Their Phones and Onto a Pitch
 
+![TouchGrass FC Cover](assets/cover.png)
+
 <p align="center">
-  <img src="assets/logo.png" alt="TouchGrass FC Logo" width="220" />
+  <img src="assets/logo.png" alt="TouchGrass FC Logo" width="160" />
 </p>
 
 ## What I Built
