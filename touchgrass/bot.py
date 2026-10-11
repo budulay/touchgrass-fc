@@ -173,7 +173,7 @@ def _dominant_language(reply_rows) -> str:
 
 @dp.message(Command("start"))
 async def cmd_start(msg: Message) -> None:
-    await msg.reply(
+    await msg.answer(
         "👋 I'm TouchGrass FC — I'll organise your football match.\n\n"
         "1. /setlocation <city> — tell me where you play\n"
         "2. /play — start collecting availability\n"
@@ -191,24 +191,24 @@ async def cmd_setlocation(msg: Message) -> None:
         lat, lon = msg.location.latitude, msg.location.longitude
         tz = "UTC"  # resolved by Open-Meteo timezone=auto
         await db.upsert_chat(msg.chat.id, lat, lon, tz)
-        await msg.reply(f"📍 Location saved: {lat:.4f}, {lon:.4f}")
+        await msg.answer(f"📍 Location saved: {lat:.4f}, {lon:.4f}")
         return
 
     # City name from text
     args = (msg.text or "").split(maxsplit=1)
     if len(args) < 2:
-        await msg.reply("Usage: /setlocation <city name>  or share your Telegram location.")
+        await msg.answer("Usage: /setlocation <city name>  or share your Telegram location.")
         return
 
     city = args[1].strip()
     coords = await pitches.geocode_city(city)
     if not coords:
-        await msg.reply(f"Couldn't find '{city}'. Try a larger city name.")
+        await msg.answer(f"Couldn't find '{city}'. Try a larger city name.")
         return
 
     lat, lon = coords
     await db.upsert_chat(msg.chat.id, lat, lon, "UTC")
-    await msg.reply(f"📍 Location set to {city} ({lat:.4f}, {lon:.4f})")
+    await msg.answer(f"📍 Location set to {city} ({lat:.4f}, {lon:.4f})")
 
 
 @dp.message(Command("play"))
@@ -217,19 +217,19 @@ async def cmd_play(msg: Message) -> None:
 
     existing = await db.get_open_round(msg.chat.id)
     if existing:
-        await msg.reply("There's already an open round. Reply to the collection message or use /plan.")
+        await msg.answer("There's already an open round. Reply to the collection message or use /plan.")
         return
 
     chat_row = await db.get_chat(msg.chat.id)
     if not chat_row:
-        await msg.reply("Set your location first with /setlocation.")
+        await msg.answer("Set your location first with /setlocation.")
         return
 
-    prompt = await msg.reply(
+    prompt = await msg.answer(
         "📋 Collecting availability — reply to *this message* in your own words.\n"
         "Tell me when you can play (day, time, any conditions). "
-        "Ukrainian, Russian, or English all work.\n\n"
-        "Example: «можу в суботу після 18» · «Sat morning I'm in»",
+        "Ukrainian, English, Spanish, German, Polish, French all work.\n\n"
+        "Example: «можу в суботу після 18» · «Sat morning I'm in» · «puedo el sábado»",
         parse_mode=ParseMode.MARKDOWN,
     )
     round_id = await db.open_round(msg.chat.id, prompt.message_id)
@@ -305,7 +305,7 @@ async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
         parse = await nlu.parse_availability(text)
     except Exception as exc:
         logger.warning("NLU failed for %s: %s", player_name, exc)
-        await msg.reply(
+        await msg.answer(
             "I couldn't understand that. Could you rephrase? "
             "e.g. 'Saturday 10-12' or 'можу в суботу вранці'"
         )
@@ -324,9 +324,9 @@ async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
             await msg.react([{"type": "emoji", "emoji": "⚽"}])  # type: ignore[arg-type]
         except Exception:
             pass
-        await msg.reply(f"⚽ Записав доступність: {slots_str}. Використовуй /plan коли всі відпишуть!")
+        await msg.answer(f"⚽ Записав доступність: {slots_str}. Використовуй /plan коли всі відпишуть!")
     else:
-        await msg.reply("Зрозумів — позначив як недоступного на цей раунд.")
+        await msg.answer("Зрозумів — позначив як недоступного на цей раунд.")
 
     # Auto-trigger planning?
     count = await db.count_replies(round_id)
@@ -338,26 +338,25 @@ async def _handle_availability(msg: Message, round_id: int, text: str) -> None:
 @dp.message(Command("plan"))
 async def cmd_plan(msg: Message) -> None:
     assert msg.chat and msg.bot
-    await msg.reply("🧠 Crunching the schedule…")
+    await msg.answer("🧠 Crunching the schedule…")
     await _run_planning(msg.chat.id, msg.bot)
 
 
 @dp.message(Command("played"))
 async def cmd_played(msg: Message) -> None:
     assert msg.chat
-    round_row = await db.get_open_round(msg.chat.id)
-    # Look for planned rounds too
+    # Look for planned or open rounds
     db_conn = await db.get_db()
     async with db_conn.execute(
-        "SELECT id FROM rounds WHERE chat_id=? AND status='planned' ORDER BY id DESC LIMIT 1",
+        "SELECT id FROM rounds WHERE chat_id=? AND (status='planned' OR status='open') ORDER BY id DESC LIMIT 1",
         (msg.chat.id,),
     ) as cur:
         row = await cur.fetchone()
     if row:
         await db.mark_played(row["id"], True)
-        await msg.reply("🏆 Legendary. Logged. Go shower.")
+        await msg.answer("🏆 Legendary. Logged. Go shower.")
     else:
-        await msg.reply("No planned match found.")
+        await msg.answer("No planned match found.")
 
 
 @dp.message(Command("nope"))
@@ -365,28 +364,28 @@ async def cmd_nope(msg: Message) -> None:
     assert msg.chat
     db_conn = await db.get_db()
     async with db_conn.execute(
-        "SELECT id FROM rounds WHERE chat_id=? AND status='planned' ORDER BY id DESC LIMIT 1",
+        "SELECT id FROM rounds WHERE chat_id=? AND (status='planned' OR status='open') ORDER BY id DESC LIMIT 1",
         (msg.chat.id,),
     ) as cur:
         row = await cur.fetchone()
     if row:
         await db.mark_played(row["id"], False)
-        await msg.reply("😅 Rain check. Happens. Try /play again when you're ready.")
+        await msg.answer("😅 Rain check. Happens. Try /play again when you're ready.")
     else:
-        await msg.reply("No planned match found.")
+        await msg.answer("No planned match found.")
 
 
 @dp.message(Command("stats"))
 async def cmd_stats(msg: Message) -> None:
     count = await db.count_matches_played()
-    await msg.reply(f"⚽ Matches actually played via this bot: **{count}**", parse_mode=ParseMode.MARKDOWN)
+    await msg.answer(f"⚽ Matches actually played via this bot: **{count}**", parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message(Command("forget"))
 async def cmd_forget(msg: Message) -> None:
     assert msg.chat
     await db.delete_chat(msg.chat.id)
-    await msg.reply("🗑️ All data for this chat wiped. Fresh start!")
+    await msg.answer("🗑️ All data for this chat wiped. Fresh start!")
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
