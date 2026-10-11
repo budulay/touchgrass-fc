@@ -53,13 +53,20 @@ class TimeSlot(BaseModel):
         if isinstance(v, str):
             v_low = v.strip().lower()
             day_map = {
-                "mon": "monday", "понед": "monday",
-                "tue": "tuesday", "вівт": "tuesday", "втор": "tuesday",
-                "wed": "wednesday", "серед": "wednesday",
-                "thu": "thursday", "четв": "thursday",
-                "fri": "friday", "п'ят": "friday", "пят": "friday",
-                "sat": "saturday", "суб": "saturday",
-                "sun": "sunday", "нед": "sunday", "воскр": "sunday",
+                # Monday
+                "mon": "monday", "понед": "monday", "lunes": "monday", "montag": "monday", "poniedz": "monday", "lundi": "monday",
+                # Tuesday
+                "tue": "tuesday", "вівт": "tuesday", "втор": "tuesday", "martes": "tuesday", "dienstag": "tuesday", "wtorek": "tuesday", "mardi": "tuesday",
+                # Wednesday
+                "wed": "wednesday", "серед": "wednesday", "miérc": "wednesday", "mierc": "wednesday", "mittwoch": "wednesday", "środ": "wednesday", "srod": "wednesday", "mercredi": "wednesday",
+                # Thursday
+                "thu": "thursday", "четв": "thursday", "jueves": "thursday", "donnerstag": "thursday", "czwart": "thursday", "jeudi": "thursday",
+                # Friday
+                "fri": "friday", "п'ят": "friday", "пят": "friday", "viernes": "friday", "freitag": "friday", "piąt": "friday", "piat": "friday", "vendredi": "friday",
+                # Saturday
+                "sat": "saturday", "суб": "saturday", "sábad": "saturday", "sabad": "saturday", "samstag": "saturday", "sobot": "saturday", "samedi": "saturday",
+                # Sunday
+                "sun": "sunday", "нед": "sunday", "воскр": "sunday", "domingo": "sunday", "sonntag": "sunday", "niedziel": "sunday", "dimanche": "sunday",
             }
             for k, day in day_map.items():
                 if k in v_low:
@@ -103,7 +110,7 @@ class AvailabilityParse(BaseModel):
         ),
     )
     language: str = Field(
-        description="Detected language code: 'uk', 'ru', or 'en'.",
+        description="Detected language code: 'uk', 'en', 'es', 'de', 'pl', 'fr', or 'ru'.",
     )
 
     @field_validator("language", mode="before")
@@ -113,6 +120,14 @@ class AvailabilityParse(BaseModel):
             v_low = v.strip().lower()
             if v_low.startswith("uk"):
                 return "uk"
+            if v_low.startswith("es") or "span" in v_low:
+                return "es"
+            if v_low.startswith("de") or "germ" in v_low:
+                return "de"
+            if v_low.startswith("pl") or "pol" in v_low:
+                return "pl"
+            if v_low.startswith("fr") or "fren" in v_low:
+                return "fr"
             if v_low.startswith("ru"):
                 return "ru"
             if v_low.startswith("en"):
@@ -147,27 +162,27 @@ _SCHEMA: dict[str, Any] = AvailabilityParse.model_json_schema()
 _SYSTEM = (
     "You are a football-match availability parser.\n"
     "Respond ONLY with valid JSON matching the schema.\n\n"
-    "Language code: 'uk' for Ukrainian, 'ru' for Russian, 'en' for English.\n\n"
-    "Days of week mapping:\n"
-    "- понеділок / понедельник -> 'monday'\n"
-    "- вівторок / вторник -> 'tuesday'\n"
-    "- середа / среда -> 'wednesday'\n"
-    "- четвер / четверг -> 'thursday'\n"
-    "- п'ятниця / пятница -> 'friday'\n"
-    "- субота / суббота -> 'saturday'\n"
-    "- неділя / воскресенье -> 'sunday'\n\n"
+    "Supported languages: 'uk' (Ukrainian), 'en' (English), 'es' (Spanish), 'de' (German), 'pl' (Polish), 'fr' (French), 'ru' (Russian).\n\n"
+    "Days of week mapping across languages:\n"
+    "- monday: понеділок, lunes, montag, poniedziałek, lundi\n"
+    "- tuesday: вівторок, martes, dienstag, wtorek, mardi\n"
+    "- wednesday: середа, miércoles, mittwoch, środa, mercredi\n"
+    "- thursday: четвер, jueves, donnerstag, czwartek, jeudi\n"
+    "- friday: п'ятниця, viernes, freitag, piątek, vendredi\n"
+    "- saturday: субота, sábado, samstag, sobota, samedi\n"
+    "- sunday: неділя, domingo, sonntag, niedziela, dimanche\n\n"
     "Rules:\n"
-    "1. If player CANNOT play (e.g. 'не можу', 'зайнятий', 'not this week', 'я пас'): set can_play=false, slots=[].\n"
-    "2. If player cannot play on one day but CAN on another (e.g. 'суботу не можу, тільки неділя'): set can_play=true, include ONLY the day they CAN play (e.g. weekday='sunday').\n"
+    "1. If player CANNOT play (e.g. 'не можу', 'not this week', 'no puedo', 'kann nicht', 'nie mogę', 'pas dispo'): set can_play=false, slots=[].\n"
+    "2. If player cannot play on one day but CAN on another (e.g. 'суботу не можу, тільки неділя', 'no sábado, sólo domingo', 'Samstag nicht, nur Sonntag'): set can_play=true, include ONLY the day they CAN play.\n"
     "3. Every slot in 'slots' MUST have 'weekday' specified as lowercase English (e.g. 'saturday', 'sunday'). Never leave weekday null if a day was mentioned.\n"
-    "4. 'start' and 'end' must be 'HH:MM' 24-hour time strings (e.g. '18:00', '09:00') or null. Never put text like 'next day' or 'morning' into start/end.\n"
+    "4. 'start' and 'end' must be 'HH:MM' 24-hour time strings (e.g. '18:00', '09:00') or null. Never put text like 'morning' or 'nachmittag' into start/end.\n"
     "5. Approximate times:\n"
-    "   - 'вранці' / 'morning' -> start='09:00', end='12:00'\n"
-    "   - 'вдень' / 'afternoon' -> start='12:00', end='17:00'\n"
-    "   - 'ввечері' / 'після роботи' / 'evening' -> start='18:00', end='21:00'\n"
-    "   - 'після 18' -> start='18:00', end='21:00'\n"
-    "   - 'any time' / 'будь-який час' on a day -> start='10:00', end='20:00'\n"
-    "6. Conditions: 'якщо не дощ'/'no rain' -> 'no_rain'; 'без вітру'/'no wind' -> 'no_wind'."
+    "   - morning / вранці / mañana / morgen / rano / matin -> start='09:00', end='12:00'\n"
+    "   - afternoon / вдень / tarde / nachmittag / po południu / après-midi -> start='12:00', end='17:00'\n"
+    "   - evening / ввечері / noche / abend / wieczór / soir -> start='18:00', end='21:00'\n"
+    "   - 'після 18' / 'after 6pm' / 'después de las 18' / 'ab 18 Uhr' / 'po 18' -> start='18:00', end='21:00'\n"
+    "   - 'any time' / 'будь-який час' / 'a cualquier hora' / 'jederzeit' on a day -> start='10:00', end='20:00'\n"
+    "6. Conditions: no rain / без дощу / sin lluvia / kein Regen / bez deszczu / sans pluie -> 'no_rain'; no wind / без вітру / sin viento / kein Wind -> 'no_wind'."
 )
 
 # ── Ollama client ─────────────────────────────────────────────────────────────
@@ -245,7 +260,15 @@ async def write_invite(
     model = model or config.OLLAMA_MODEL
     base_url = base_url or config.OLLAMA_BASE_URL
 
-    lang_names = {"uk": "Ukrainian", "ru": "Russian", "en": "English"}
+    lang_names = {
+        "uk": "Ukrainian",
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "pl": "Polish",
+        "fr": "French",
+        "ru": "Russian",
+    }
     lang_full = lang_names.get(language, "English")
 
     system = (

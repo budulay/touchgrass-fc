@@ -38,5 +38,11 @@
   {"id": 37, "message": "в неділю після обіду, десь з 13:30", "expected": {"can_play": true, "slots": [{"weekday": "sunday", "start": "13:30"}], "conditions": [], "language": "uk"}},
   {"id": 38, "message": "не, не цього разу", "expected": {"can_play": false, "slots": [], "conditions": [], "language": "uk"}},
   {"id": 39, "message": "Thursday 7pm, but only if we have 8+ players", "expected": {"can_play": true, "slots": [{"weekday": "thursday", "start": "19:00"}], "conditions": [], "language": "en"}},
-  {"id": 40, "message": "суббота после обеда, хоть в 14 хоть в 15", "expected": {"can_play": true, "slots": [{"weekday": "saturday", "start": "14:00"}], "conditions": [], "language": "ru"}}
+  {"id": 40, "message": "суббота после обеда, хоть в 14 хоть в 15", "expected": {"can_play": true, "slots": [{"weekday": "saturday", "start": "14:00"}], "conditions": [], "language": "ru"}},
+  {"id": 41, "message": "puedo el sábado después de las 18 si no llueve", "expected": {"can_play": true, "slots": [{"weekday": "saturday", "start": "18:00"}], "conditions": ["no_rain"], "language": "es"}},
+  {"id": 42, "message": "este fin de semana no puedo, tengo un viaje", "expected": {"can_play": false, "slots": [], "conditions": [], "language": "es"}},
+  {"id": 43, "message": "Samstag ab 18 Uhr geht, wenn kein Regen", "expected": {"can_play": true, "slots": [{"weekday": "saturday", "start": "18:00"}], "conditions": ["no_rain"], "language": "de"}},
+  {"id": 44, "message": "Leider nicht diesmal, muss arbeiten", "expected": {"can_play": false, "slots": [], "conditions": [], "language": "de"}},
+  {"id": 45, "message": "mogę w niedzielę rano od 9 do 12", "expected": {"can_play": true, "slots": [{"weekday": "sunday", "start": "09:00", "end": "12:00"}], "conditions": [], "language": "pl"}},
+  {"id": 46, "message": "dispo samedi après 18h s'il ne pleut pas", "expected": {"can_play": true, "slots": [{"weekday": "saturday", "start": "18:00"}], "conditions": ["no_rain"], "language": "fr"}}
 ]

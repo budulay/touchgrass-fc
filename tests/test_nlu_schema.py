@@ -46,6 +46,6 @@ def test_parse_roundtrip_json():
 
 
 def test_parse_multilingual_language_field():
-    for lang in ("uk", "ru", "en"):
+    for lang in ("uk", "en", "es", "de", "pl", "fr", "ru"):
         p = AvailabilityParse(can_play=True, slots=[], conditions=[], language=lang)
         assert p.language == lang

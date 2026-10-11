@@ -10,7 +10,7 @@
 
 TouchGrass FC is a Telegram group bot that solves a very specific problem: every pickup football group has the same 20-message thread that goes nowhere. "Can you Saturday?" "Maybe." "What time?" "After work." "Which Saturday?" Nobody commits. The match never happens.
 
-The bot intercepts that conversation. Players reply to a single prompt in whatever language they feel like (Ukrainian, Russian, English — the group is multilingual). A local Gemma model reads each message and extracts structured availability. Deterministic code scores the candidate slots against a 7-day weather forecast, enforces a "must finish before sunset" constraint, finds the nearest football pitch via OpenStreetMap, and posts exactly one non-anonymous Telegram poll. Then the bot goes quiet — except for a 3-hour-before reminder and a post-match "did you actually play?" ping.
+The bot intercepts that conversation. Players reply to a single prompt in whatever language they speak (Ukrainian, English, Spanish, German, Polish, French — real pickup groups are international). A local Gemma model reads each message and extracts structured availability. Deterministic code scores the candidate slots against a 7-day weather forecast, enforces a "must finish before sunset" constraint, finds the nearest football pitch via OpenStreetMap, and posts exactly one non-anonymous Telegram poll. Then the bot goes quiet — except for a 3-hour-before reminder and a post-match "did you actually play?" ping.
 
 The answer to that last question is the metric that matters: `⚽ Matches actually played: N`. That number is the point.
 
@@ -33,7 +33,7 @@ The answer to that last question is the metric that matters: `⚽ Matches actual
 
 ### The NLU layer
 
-The hardest part was multilingual availability parsing. "можу в суботу після 18, якщо не дощ", "Sat morning I'm in", "пятница после обеда" — these need to produce the same structured schema.
+The hardest part was multilingual availability parsing: «можу в суботу після 18, якщо не дощ», «Sat morning I'm in», «puedo el sábado después de las 18», «Samstag ab 18 Uhr geht» — these all need to produce the exact same structured schema.
 
 I used Ollama's `format` parameter with the full Pydantic JSON schema baked into the request. Temperature = 0. On ValidationError, the bot serialises the error and re-sends it to the model with the original message — one retry, then it asks the player to rephrase.
 

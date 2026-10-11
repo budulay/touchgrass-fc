@@ -27,7 +27,7 @@ SCRIPT = [
     ("Олексій", "можу в суботу після 18, якщо не буде дощу"),
     ("Maria", "Saturday morning works for me, 9-11am"),
     ("Дмитро", "суботу не можу, тільки неділя вранці"),
-    ("Carlos", "I'm in for Sunday, any time works"),
+    ("Carlos", "¡Cuenta conmigo el domingo, a cualquier hora!"),
     ("Іванна", "можу і в суботу після 18 і в неділю вранці"),
 ]
 
@@ -88,7 +88,7 @@ async def _nlu_call(message: str, player: str) -> dict:
             "Олексій": {"can_play": True, "slots": [{"weekday": "saturday", "start": "18:00", "end": "20:00", "date": None}], "conditions": ["no_rain"], "language": "uk"},
             "Maria":   {"can_play": True, "slots": [{"weekday": "saturday", "start": "09:00", "end": "11:00", "date": None}], "conditions": [], "language": "en"},
             "Дмитро":  {"can_play": True, "slots": [{"weekday": "sunday",   "start": "09:00", "end": "12:00", "date": None}], "conditions": [], "language": "uk"},
-            "Carlos":  {"can_play": True, "slots": [{"weekday": "sunday",   "start": "10:00", "end": "12:00", "date": None}], "conditions": [], "language": "en"},
+            "Carlos":  {"can_play": True, "slots": [{"weekday": "sunday",   "start": "10:00", "end": "20:00", "date": None}], "conditions": [], "language": "es"},
             "Іванна":  {"can_play": True, "slots": [{"weekday": "saturday", "start": "18:00", "end": "20:00", "date": None}, {"weekday": "sunday", "start": "09:00", "end": "11:00", "date": None}], "conditions": [], "language": "uk"},
         }
         return _mocks.get(player, {"can_play": False, "slots": [], "conditions": [], "language": "en"})
