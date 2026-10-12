@@ -106,3 +106,10 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# ==============================================================================
+# Local Submission Drafts (kept local, excluded from public repo)
+# ==============================================================================
+POST.md
+docs/demo.md
+
